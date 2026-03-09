@@ -1,0 +1,15 @@
+port=0
+interface=ens160  # VMware NIC 이름 (terraform output으로 동적)
+bind-interfaces
+
+# DHCP 설정
+dhcp-range={{ pxe_range_start }},{{ pxe_range_end }},{{ pxe_netmask }},{{ pxe_gateway }},12h
+dhcp-option=3,{{ pxe_gateway }}  # gateway
+dhcp-option=6,{{ pxe_gateway }}  # DNS
+
+# PXE 부팅
+dhcp-boot=pxelinux.0
+
+# TFTP 설정
+enable-tftp
+tftp-root={{ tftp_root }}
