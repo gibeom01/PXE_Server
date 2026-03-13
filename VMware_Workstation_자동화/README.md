@@ -1,6 +1,6 @@
 # VMware Workstaion pro 17 자동화 실행
 
-## 1. PS C:\WINDOWS\system32> Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+## 1. Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ### 실행 규칙 변경
 ### 실행 정책은 신뢰하지 않는 스크립트로부터 사용자를 보호합니다. 실행 정책을 변경하면 about_Execution_Policies 도움말
@@ -8,7 +8,7 @@
 ### 변경하시겠습니까?
 ### [Y] 예(Y)  [A] 모두 예(A)  [N] 아니요(N)  [L] 모두 아니요(L)  [S] ### 일시 중단(S)  [?] 도움말 (기본값은 "N"): y
 
-## 2. Set-Location D:\ -> ps1 파일 있는 곳으로 이동.
+## 2. Set-Location D:\VMware_Workstation_자동화 -> .ps1 파일 있는 곳으로 이동.
 
 ---
 
