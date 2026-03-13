@@ -24,7 +24,8 @@
 ## Phase 3. 설치 강제 트리거 (가상 머신 내부 환경)
 
 ### 1. & "C:\Program Files (x86)\VMware\VMware Workstation\vmrun.exe" start "D:\VMware\Win2019\Win2019.vmx" 명령어로 VM 실행.
-### 2. VM에서 Shift + F10 눌러 cmd 열고 "d:\setup.exe /unattend:e:\autounattend.xml" 명령어 입력.
+
+#### VM에서 Shift + F10 눌러 cmd 열고 "d:\setup.exe /unattend:e:\autounattend.xml" 명령어 입력. (다음으로 넘어가지 않으면 진행)
 
 ## Phase 4. 원격 접속(RDP) 자동 세팅 (설치 완료 후 VM 내부 환경)
 
