@@ -8,6 +8,8 @@ Terraform, Ansible, 변경 사항 폴더는 아직 테스트 단계.
 
 IBM System x3550 M4
 
-DELL R620, R640
+DELL R620, R630, R640
 
 RENOVO SR630
+
+HPE Gen9, Gen10, Gen11
