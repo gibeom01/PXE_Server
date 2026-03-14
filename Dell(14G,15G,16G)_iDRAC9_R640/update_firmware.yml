@@ -11,7 +11,7 @@
 
     # 2. 적용할 펌웨어 파일의 로컬 경로 (Mac에 다운로드 받아둔 파일 경로)
     # 예: Dell 지원 사이트에서 받은 RAID 컨트롤러(PERC) 업데이트 파일
-    fw_file_path: "/Users/myuser/Desktop/Dell(14G,15G,16G)_iDRAC9_R640/SAS-RAID_Firmware_XXXXX.EXE"
+    fw_file_path: "/Users/myuser/Desktop/Dell(14G,15G,16G)_iDRAC9_R640/Firmware/SAS-RAID_Firmware_XXXXX.EXE"
 
   tasks:
     # ---------------------------------------------------------
