@@ -1,0 +1,56 @@
+---
+- name: HPE Gen11 RAID 1 미러링 자동 구성 (초기화 포함)
+  hosts: localhost # Mac 로컬에서 실행
+  gather_facts: no
+
+  vars:
+    ilo_ip: "10.10.10.140"
+    ilo_user: "Administrator"
+    ilo_password: "iLoPassw0rd123!"
+    storage_id: "1" 
+
+  tasks:
+    - name: "Task 1: 기존 RAID 설정 및 디스크 찌꺼기 완벽 초기화 (Clear Configuration)"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Storage/{{ storage_id }}/Actions/Storage.ResetToDefaults"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        status_code: [200, 204]
+        body_format: json
+        body:
+          ResetType: "ResetAll"
+      ignore_errors: yes # 컨트롤러가 이미 완전히 초기화된 상태일 경우 발생하는 에러 무시
+
+    - name: "Task 1.5: 컨트롤러 초기화 안정화 대기"
+      pause:
+        seconds: 15
+
+    - name: "Task 2: 1.2TB 디스크 2개로 새로운 RAID 1 볼륨 생성"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Storage/{{ storage_id }}/Volumes"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        status_code: [200, 201, 202]
+        body_format: json
+        body:
+          Name: "OS_DATA_RAID1"
+          VolumeType: "Mirrored"
+          Drives:
+            - {"@odata.id": "/redfish/v1/Systems/1/Storage/{{ storage_id }}/Drives/1"}
+            - {"@odata.id": "/redfish/v1/Systems/1/Storage/{{ storage_id }}/Drives/2"}
+
+    - name: "Task 3: 구성 적용을 위한 서버 강제 재부팅"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ForceRestart"
+          
