@@ -1,0 +1,48 @@
+---
+- name: Dell 12G(R620) iDRAC7 가상 CD 마운트 및 OS 무인 설치
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    idrac_ip: "10.10.10.120"
+    idrac_user: "idrac_admin"
+    idrac_password: "IdracP@ss123!"
+    
+    mac_http_ip: "192.168.0.100" 
+    http_port: "8000"
+    iso_filename: "Windows_Server_2019_Auto.iso"
+
+  tasks:
+    - name: "Task 1: 기존 가상 미디어 연결 해제 (초기화)"
+      dellemc.openmanage.idrac_virtual_media:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        boot_to_vmedia: false
+        mount: false
+
+    - name: "Task 2: Mac의 HTTP 서버에서 커스텀 ISO 마운트 (WS-Man 방식)"
+      dellemc.openmanage.idrac_virtual_media:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        image_url: "http://{{ mac_http_ip }}:{{ http_port }}/{{ iso_filename }}"
+        mount: true
+
+    - name: "Task 3: 12G 장비 마운트 안정화 대기 (충분한 시간 부여)"
+      pause:
+        seconds: 20
+
+    - name: "Task 4: 서버 재부팅 설정 - 1회성 부팅 장치를 가상 CD(VCD-DVD)로 변경 후 재시작"
+      # iDRAC7은 idrac_os_deployment 모듈이 불안정하여 원초적인 서버 액션 모듈 사용
+      dellemc.openmanage.idrac_server_action:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        power_state: "ForceRestart"
+        # 12G 시스템에서 지원하는 경우 아래 파라미터가 동작합니다.
+        # 동작하지 않을 경우 수동으로 F11 부트 메뉴에서 선택하거나 ssh로 racadm 명령을 쏘아야 할 수 있습니다.
+        
