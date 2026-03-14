@@ -1,0 +1,67 @@
+---
+- name: Dell iDRAC 가상 CD-ROM 마운트 및 OS 무인 설치 부팅
+  hosts: localhost # Mac 로컬에서 실행
+  gather_facts: no
+
+  vars:
+    # 1. iDRAC 접속 정보
+    idrac_ip: "192.168.0.120"
+    idrac_user: "root"
+    idrac_password: "calvin"
+    
+    # 2. Mac(Control Node)의 정보
+    # 1:1 연결 시 Mac의 이더넷 어댑터에 설정한 IP 주소입니다.
+    mac_http_ip: "192.168.0.100" 
+    http_port: "8000"
+    iso_filename: "Windows_Server_2019_Auto.iso" # Kickstart 정보가 주입된 커스텀 ISO
+
+  tasks:
+    - name: "Task 1: 기존에 마운트된 가상 미디어가 있다면 연결 해제 (초기화)"
+      dellemc.openmanage.idrac_virtual_media:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        boot_to_vmedia: false # 부팅 설정 해제
+        mount: false          # 언마운트
+
+    - name: "Task 2: Mac의 HTTP 서버에서 ISO 파일을 iDRAC 가상 CD로 마운트"
+      dellemc.openmanage.idrac_virtual_media:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        image_url: "http://{{ mac_http_ip }}:{{ http_port }}/{{ iso_filename }}"
+        mount: true
+      register: mount_result
+
+    - name: "Task 3: 마운트 성공 여부 확인 대기 (안정성 확보)"
+      pause:
+        seconds: 25 # iDRAC이 네트워크를 통해 ISO 헤더를 읽어오고 마운트할 시간을 줍니다.
+
+    - name: "Task 4: 다음 1회 부팅(One-Time Boot) 대상을 '가상 CD(VCD-DVD)'로 강제 지정"
+      # 서버가 재부팅될 때 하드디스크나 네트워크(PXE)가 아닌 방금 꽂은 가상 CD로 부팅되게 합니다.
+      uri:
+        url: "https://{{ idrac_ip }}/redfish/v1/Systems/System.Embedded.1"
+        method: PATCH
+        user: "{{ idrac_user }}"
+        password: "{{ idrac_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          Boot:
+            BootSourceOverrideTarget: "Cd"       # CD/DVD로 부팅
+            BootSourceOverrideEnabled: "Once"    # 딱 한 번만 (설치 후엔 OS 디스크로 부팅되도록)
+      
+    - name: "Task 5: 서버 전원 켜기 또는 강제 재부팅 (OS 설치 시작)"
+      # 전원이 꺼져있다면 켜고, 켜져있다면 강제로 재부팅합니다.
+      uri:
+        url: "https://{{ idrac_ip }}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ idrac_user }}"
+        password: "{{ idrac_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ForceRestart"
+          
