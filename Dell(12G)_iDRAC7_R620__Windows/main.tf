@@ -67,7 +67,7 @@ resource "null_resource" "windows_config" {
     # Ansible이 실시간으로 폴링(Polling)하며 접속을 뚫어냅니다.
     command = <<EOT
       echo "🚀 OS 배포가 시작되었습니다. Ansible이 서버의 접속 응답을 실시간으로 대기합니다..."
-      ansible-playbook -i inventory.ini 04_windows_config.yml
+      ansible-playbook -i inventory.ini windows_config.yml
     EOT
   }
 }
