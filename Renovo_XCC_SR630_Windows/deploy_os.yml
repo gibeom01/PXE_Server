@@ -1,0 +1,70 @@
+---
+- name: Lenovo SR630 가상 CD 마운트 및 OS 무인 설치 부팅
+  hosts: localhost  # Mac 로컬에서 실행
+  gather_facts: no
+
+  vars:
+    # 1. XCC 접속 정보
+    xcc_ip: "10.10.10.130"
+    xcc_user: "USERID"
+    xcc_password: "Passw0rd123!"
+
+    # 2. Mac(Control Node)의 정보
+    # 1:1 연결 시 Mac의 이더넷 어댑터에 설정한 IP 주소입니다.
+    mac_http_ip: "192.168.0.100" 
+    http_port: "8000"
+    iso_filename: "Windows_Server_2019_Auto.iso" # Kickstart 정보가 주입된 커스텀 ISO
+
+  tasks:
+    - name: "Task 1: 기존 마운트된 미디어 해제 (Eject)"
+      uri:
+        url: "https://{{ xcc_ip }}/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.EjectMedia"
+        method: POST
+        user: "{{ xcc_user }}"
+        password: "{{ xcc_password }}"
+        validate_certs: no
+        status_code: [200, 204]
+      ignore_errors: yes
+
+    - name: "Task 2: Mac HTTP 서버의 커스텀 ISO 마운트 (Insert)"
+      uri:
+        url: "https://{{ xcc_ip }}/redfish/v1/Managers/1/VirtualMedia/1/Actions/VirtualMedia.InsertMedia"
+        method: POST
+        user: "{{ xcc_user }}"
+        password: "{{ xcc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          Image: "http://{{ mac_http_ip }}:{{ http_port }}/{{ iso_filename }}"
+          Inserted: true
+
+    - name: "Task 3: XCC 가상 미디어 네트워크 마운트 안정화 대기 (필수)"
+      pause:
+        seconds: 25 # XCC가 원격 서버(Mac)와 통신하여 ISO 파일을 온전히 인식할 수 있도록 기다려 줍니다.
+
+    - name: "Task 4: 다음 1회성 부팅을 CD/DVD로 강제 지정"
+      # 서버가 재부팅될 때 하드디스크나 네트워크(PXE)가 아닌 방금 꽂은 가상 CD로 부팅되게 합니다.
+      uri:
+        url: "https://{{ xcc_ip }}/redfish/v1/Systems/1"
+        method: PATCH
+        user: "{{ xcc_user }}"
+        password: "{{ xcc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          Boot:
+            BootSourceOverrideTarget: "Cd"        # CD/DVD로 부팅
+            BootSourceOverrideEnabled: "Once"     # 딱 한 번만 (설치 후엔 OS 디스크로 부팅되도록)
+      
+    - name: "Task 5: OS 설치 시작 (서버 강제 재부팅)"
+      # 전원이 꺼져있다면 켜고, 켜져있다면 강제로 재부팅합니다.
+      uri:
+        url: "https://{{ xcc_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ xcc_user }}"
+        password: "{{ xcc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ForceRestart"
+          
