@@ -42,14 +42,14 @@ resource "null_resource" "deploy_os" {
   
   provisioner "local-exec" {
     # Mac 내장 파이썬으로 임시 웹서버를 백그라운드(&)로 실행하고 PID를 기억
-    # Ansible 실행 후 60초 대기(iDRAC이 ISO를 읽어갈 시간)한 뒤 웹서버 강제 종료
+    # Ansible 실행 후 60초 대기(iLO가 ISO를 읽어갈 시간)한 뒤 웹서버 강제 종료
     command = <<EOT
       cd ISO
       python3 -m http.server 8000 &
       HTTP_PID=$!
       cd ..
       ansible-playbook deploy_os.yml
-      echo "iDRAC ISO 마운트 유지를 위해 60초 대기 중..."
+      echo "iLO ISO 마운트 유지를 위해 60초 대기 중..."
       sleep 60
       kill $HTTP_PID
     EOT
