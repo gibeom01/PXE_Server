@@ -29,7 +29,7 @@ MAC Air 기준
 # 5. 파일 싫행 준비:
 
 - ISO 폴더에 Windows_Server_2019.iso 넣고 진행.
-- 실행 위치: ~/Desktop/Lenovo_SR630_Windows 위치에서 진행.
+- 해당 폴더 ~/Desktop/Lenovo_SR630_Windows 위치에 옮겨 진행.
 
 # 6. 파일 실행 순서:
 
