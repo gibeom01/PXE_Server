@@ -1,0 +1,108 @@
+---
+- name: Windows Server 기본 환경 셋팅 (Req 2 ~ Req 6)
+  hosts: windows_servers # inventory에 등록된 Windows IP (예: 192.168.50.10)
+  gather_facts: no # ★중요: 접속되기 전이므로 팩트 수집을 꺼둬야 에러가 안 납니다.
+  vars:
+    ansible_user: "Administrator"
+    ansible_password: "WinP@ss123!"
+    ansible_connection: "winrm"
+    ansible_winrm_server_cert_validation: ignore
+    
+    new_rdp_port: 33899 # 변경할 원격 포트
+
+  tasks:
+    # ---------------------------------------------------------
+    # 스마트 대기 구역: OS 설치 완료 및 WinRM 활성화 대기
+    # ---------------------------------------------------------
+    - name: "Task 0: Windows 설치 및 WinRM 응답 대기 (최대 40분)"
+      wait_for_connection:
+        delay: 60       # 처음 60초는 서버가 켜지는 중이므로 묻지 않고 대기
+        sleep: 15       # 15초 간격으로 WinRM 접속 시도
+        timeout: 2400   # 최대 40분(2400초)까지 인내심을 갖고 대기
+      
+    - name: "Task 0-1: 팩트 수집 (접속 성공 시 OS 정보 읽어오기)"
+      setup: # 위에서 gather_facts: no를 했기 때문에, 접속 성공 후 수동으로 팩트를 수집합니다.
+
+    # ---------------------------------------------------------
+    # 조건 2. sa 사용자 계정 사용 안 함 (lusrmgr.msc)
+    # ---------------------------------------------------------
+    - name: "Task 2: 'sa' 사용자 계정 비활성화"
+      win_user:
+        name: "sa"
+        account_disabled: yes
+        state: present
+
+    # ---------------------------------------------------------
+    # 조건 3. 네트워크 대역, IP, DNS, NetBIOS 설정 (ncpa.cpl)
+    # ---------------------------------------------------------
+    - name: "Task 3-1: 고정 IP, Subnet, Gateway 설정 (비동기 실행)"
+      win_shell: |
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+        New-NetIPAddress -InterfaceAlias $adapter.Name -IPAddress "192.168.50.10" -PrefixLength 24 -DefaultGateway "192.168.50.1" -AddressFamily IPv4
+      # 비동기 처리 핵심: 명령어를 던지고 응답을 기다리지 않음
+      async: 10 
+      poll: 0
+      ignore_errors: yes # 이미 IP가 설정되어 세션이 끊기는 것을 방지
+
+    - name: "Task 3-1.5: 접속 대상(Inventory IP)을 방금 설정한 새 고정 IP로 동적 변경"
+      set_fact:
+        ansible_host: "192.168.50.10"
+
+    - name: "Task 3-1.6: 변경된 새 IP로 WinRM 접속이 복구될 때까지 대기"
+      wait_for_connection:
+        delay: 5       # IP가 적용되고 네트워크 어댑터가 재시작될 시간을 5초 줍니다.
+        sleep: 5       # 5초 간격으로 새 IP에 접속을 시도합니다.
+        timeout: 120   # 최대 2분간 기다립니다.
+
+    - name: "Task 3-2: SK IDC DNS 설정"
+      win_dns_client:
+        adapter_names: "*"
+        ipv4_addresses:
+          - "219.250.36.130"
+          - "210.220.163.82"
+
+    - name: "Task 3-3: NetBIOS over TCP/IP 사용 안 함"
+      win_shell: |
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+        Set-NetAdapterBinding -Name $adapter.Name -ComponentID "ms_netbios" -Enabled $false
+
+    # ---------------------------------------------------------
+    # 조건 4. RDP 포트 레지스트리 변경 (regedit)
+    # ---------------------------------------------------------
+    - name: "Task 4: RDP 포트를 {{ new_rdp_port }}로 변경 (레지스트리 2곳)"
+      win_regedit:
+        path: "{{ item }}"
+        name: PortNumber
+        data: "{{ new_rdp_port }}"
+        type: dword
+      loop:
+        - "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\Wds\\rdpwd\\Tds\\tcp"
+        - "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp"
+
+    # ---------------------------------------------------------
+    # 조건 5. 방화벽 인바운드 룰 추가 (firewall.cpl)
+    # ---------------------------------------------------------
+    - name: "Task 5: 변경된 RDP 포트 방화벽 허용 (원격연결_Port)"
+      win_firewall_rule:
+        name: "원격연결_Port"
+        localport: "{{ new_rdp_port }}"
+        action: allow
+        direction: in
+        protocol: tcp
+        state: present
+        enabled: yes
+
+    # ---------------------------------------------------------
+    # 조건 6. 원격 접속 허용 설정 (sysdm.cpl)
+    # ---------------------------------------------------------
+    - name: "Task 6: 원격 데스크톱 연결(RDP) 기능 활성화"
+      win_regedit:
+        path: "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server"
+        name: fDenyTSConnections
+        data: 0
+        type: dword
+
+    - name: "완료 후 Windows 재부팅 (포트 변경 및 네트워크 적용을 위해)"
+      win_reboot:
+        reboot_timeout: 300
+        
