@@ -8,7 +8,7 @@
 ### 변경하시겠습니까?
 ### [Y] 예(Y)  [A] 모두 예(A)  [N] 아니요(N)  [L] 모두 아니요(L)  [S] ### 일시 중단(S)  [?] 도움말 (기본값은 "N"): y
 
-## 2. Set-Location D:\VMware_Workstation_자동화 -> .ps1 파일 있는 곳으로 이동.
+## 2. Set-Location D:\VMware_Workstation_Windows -> .ps1 파일 있는 곳으로 이동.
 
 ---
 
