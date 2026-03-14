@@ -28,8 +28,8 @@ MAC Air 기준
 
 5. 파일 싫행순서:
 
-ISO 폴더에 Windows_Server_2019.iso 넣고 진행.
-실행 위치: ~/Desktop/Dell(12G)_iDRAC7_R620_Windows 위치에서 진행.
+- ISO 폴더에 Windows_Server_2019.iso 넣고 진행.
+- 실행 위치: ~/Desktop/Dell(12G)_iDRAC7_R620_Windows 위치에서 진행.
 
 - setting.sh                                        -> MAC 터미널에서 1섹션씪 진행.
 - update_firmware.yml                               -> ansible-playbook [파일 이름]으로 한번에 진행.
