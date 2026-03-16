@@ -22,18 +22,18 @@ IBM System x3550 M4
 ---
 개념
 
-Apache (웹 서버: 브라우저 요청 받아 HTML/Image 등 전송하는 역할)
-PHP (서버 스크립트 언어: 서버에서 동작, 데이터베이스 조회나 로직 처리 후 HTML 생성 역할)
+- Apache (웹 서버: 브라우저 요청 받아 HTML/Image 등 전송하는 역할)
+- PHP (서버 스크립트 언어: 서버에서 동작, 데이터베이스 조회나 로직 처리 후 HTML 생성 역할)
 
 설치 방법
 
 (Linux - Ubuntu 기반)
-sudo apt update && sudo apt upgrade (패키지 업데이트)
-sudo apt install apache2 (Apache 설치)
-sudo apt install php libaoache2-mod-php (PHP 설치)
-systemctl status apache2 (설정 확인)
+- sudo apt update && sudo apt upgrade (패키지 업데이트)
+- sudo apt install apache2 (Apache 설치)
+- sudo apt install php libaoache2-mod-php (PHP 설치)
+- systemctl status apache2 (설정 확인)
 
 (Windows 기반)
-PHP 공식 사이트 -> "Thread Safe' ZIP 파일 다운 -> C:\php 등에 압축 해제 (설치파일 다운)
-https.conf 파일 -> PHP 모듈 설정 연결 (Apache 연동)
-XAMPP, WAMP 등 올인원 패키지 사용해 Apache, PHP, MySQL 동시 설치 가능 (간편 설치)
+- PHP 공식 사이트 -> "Thread Safe' ZIP 파일 다운 -> C:\php 등에 압축 해제 (설치파일 다운)
+- https.conf 파일 -> PHP 모듈 설정 연결 (Apache 연동)
+- XAMPP, WAMP 등 올인원 패키지 사용해 Apache, PHP, MySQL 동시 설치 가능 (간편 설치)
