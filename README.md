@@ -13,10 +13,18 @@ IBM System x3550 M4
 - ansible-galaxy collection install community.general
 - 파일은 deploy_os.yml, windows_config.yml만 가능함.
 
+Inspur(중국)
+
+Huawei(중국)
+
+Supermicro
+
+Cisco
+
 ---
 
 1. terraform.tfvars, for_each 파일 작성.
-2. 서버별 코드 통일. (Dell, HPE, Renove/IBM)
+2. 서버별 코드 통일. (Renove/IBM, Inspur(중국), Huawei(중국), Supermicro, cisco)
 3. 분리한 서버별에서 OS별로 분리. (Linux, Windows)
 
 ---
