@@ -2,9 +2,9 @@
 
 DELL R620, R630, R640
 
-RENOVO SR630
-
 HPE Gen9, Gen10, Gen11
+
+RENOVO SR630
 
 IBM System x3550 M4
 - 구형 IBM 장비는 IMM2 (Integrated Management Module II) 칩셋 사용.
@@ -12,6 +12,14 @@ IBM System x3550 M4
 - brew install ipmitool
 - ansible-galaxy collection install community.general
 - 파일은 deploy_os.yml, windows_config.yml만 가능함.
+
+XCC, IMM2 통합 관리 방법 (LXCA 활용)
+LXCA 설치: 윈도우나 리눅스 PC가 아닌, VMware나 Hyper-V 같은 가상화 서버 위에 LXCA 이미지(Virtual Appliance)를 설치합니다.
+노드 등록 (Discovery): LXCA 관리 화면에서 SR630의 XCC IP와 x3550 M4의 IMM2 IP를 각각 등록합니다.
+대시보드 확인: 등록이 완료되면 한 화면에서 두 서버의 전원 상태, 온도, 팬 속도, 하드웨어 에러 로그를 동시에 모니터링할 수 있습니다.
+주의사항 및 차이점
+기능의 차이: 최신 SR630(XCC)은 펌웨어 업데이트나 OS 배포까지 원격으로 가능하지만, 구형 x3550 M4(IMM2)는 모델에 따라 단순 모니터링이나 전원 제어 정도로 기능이 제한될 수 있습니다.
+라이선스: 단순 모니터링은 무료인 경우가 많지만, 서버 설정값 복제나 고급 자동화 기능을 쓰려면 서버 대수만큼 라이선스가 필요할 수 있습니다.
 
 Inspur(중국)
 
