@@ -1,0 +1,78 @@
+---
+- name: 동적 다중 RAID 구성 (Lenovo XCC & IBM IMM2 통합)
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    storage_id: "1"
+
+    # 직관적인 문자열을 Redfish API 표준어로 번역해주는 사전
+    raid_map:
+      "RAID 0": "NonRedundant"
+      "RAID 1": "Mirrored"
+      "RAID 5": "StripedWithParity"
+      "RAID 6": "StripedWithDoubleParity"
+      "RAID 10": "SpannedMirrors"
+    
+    # 참고: HPE iLO 4용 사전(bmc_raid_map)은 Lenovo 환경에서 불필요하므로 제거했습니다.
+
+  tasks:
+    # ---------------------------------------------------------
+    # IBM 레거시 장비 (IPMI) 처리
+    # ---------------------------------------------------------
+    - name: "[IBM] 레거시 장비 RAID 구성 스킵 안내"
+      debug:
+        msg: "IBM M4 장비는 Redfish API를 지원하지 않으므로, 부팅 시 Ctrl+H 등을 통한 수동 RAID 구성이 사전 요구됩니다."
+      when: api_type == 'ipmi'
+
+    # ---------------------------------------------------------
+    # Lenovo (Redfish) RAID 구성
+    # ---------------------------------------------------------
+    - name: "Task 1: [Lenovo] 기존 RAID 설정 초기화 (Clear Configuration)"
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Storage/{{ storage_id }}/Actions/Storage.ResetToDefaults"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        status_code: [200, 204]
+        body_format: json
+        body:
+          ResetType: "ResetAll"
+      when: api_type == 'redfish'
+      ignore_errors: yes
+      
+    - name: "Task 1.5: [Lenovo] 컨트롤러 초기화 안정화 대기"
+      pause:
+        seconds: 15
+      when: api_type == 'redfish'
+
+    - name: "Task 2: [Lenovo] 동적 다중 RAID 볼륨 생성"
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Storage/{{ storage_id }}/Volumes"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        status_code: [200, 201, 202]
+        body_format: json
+        body:
+          Name: "{{ item.name }}"
+          # 사전에 Key가 없으면 입력값 그대로 사용
+          VolumeType: "{{ raid_map[item.type] | default(item.type) }}"
+          # 숫자 배열(예: [1, 2])을 Redfish URI 형식 문자열 리스트로 파싱
+          Drives: "{{ item.drives | map('regex_replace', '^(.*)$', '{\"@odata.id\": \"/redfish/v1/Systems/1/Storage/' + storage_id + '/Drives/\\1\"}') | list }}"
+      loop: "{{ raid_volumes }}"
+      when: api_type == 'redfish'
+
+    - name: "Task 3: [Lenovo] 구성 적용을 위한 서버 강제 재부팅"
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ForceRestart"
+      when: api_type == 'redfish'

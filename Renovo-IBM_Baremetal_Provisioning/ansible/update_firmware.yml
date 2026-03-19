@@ -1,0 +1,66 @@
+---
+- name: 펌웨어 업데이트 및 안전 복구 (Lenovo XCC & IBM IMM2 통합)
+  hosts: localhost
+  gather_facts: no
+  vars:
+    # 펌웨어 파일 경로는 변수로 주입되거나 아래처럼 지정합니다.
+    fw_file_url: "http://{{ mac_http_ip }}:8001/lnvgy_fw_xcc_teei_anyos.uxz"
+
+  tasks:
+    # ---------------------------------------------------------
+    # IBM 레거시 장비 (IPMI) 처리
+    # ---------------------------------------------------------
+    - name: "[IBM] 레거시 장비 펌웨어 업데이트 스킵"
+      debug:
+        msg: "IBM M4 장비는 Redfish API를 지원하지 않으므로 펌웨어 자동 업데이트를 건너뜁니다."
+      when: api_type == 'ipmi'
+
+    # ---------------------------------------------------------
+    # Lenovo (Redfish) 안전 실행 구역
+    # ---------------------------------------------------------
+    - name: "Lenovo 펌웨어 업데이트 안전 실행 구역 (Try)"
+      block:
+        - name: "Task 1: [Lenovo] 새 펌웨어 패키지 업로드 및 설치 예약"
+          uri:
+            url: "https://{{ bmc_ip }}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
+            method: POST
+            user: "{{ bmc_user }}"
+            password: "{{ bmc_password }}"
+            validate_certs: no
+            body_format: json
+            body:
+              ImageURI: "{{ fw_file_url }}"
+          when: api_type == 'redfish'
+
+        - name: "Task 2: [Lenovo] 펌웨어 적용을 위한 서버 강제 재부팅"
+          uri:
+            # 주의: Dell 전용인 System.Embedded.1 대신 표준인 Systems/1 사용
+            url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+            method: POST
+            user: "{{ bmc_user }}"
+            password: "{{ bmc_password }}"
+            validate_certs: no
+            body_format: json
+            body:
+              ResetType: "ForceRestart"
+          when: api_type == 'redfish'
+
+      # ---------------------------------------------------------
+      # 에러 복구 구역 (Rescue)
+      # ---------------------------------------------------------
+      rescue:
+        - name: "Rescue 1: [Lenovo] XCC 매니저 강제 초기화 (작업 큐 롤백)"
+          uri:
+            url: "https://{{ bmc_ip }}/redfish/v1/Managers/1/Actions/Manager.Reset"
+            method: POST
+            user: "{{ bmc_user }}"
+            password: "{{ bmc_password }}"
+            validate_certs: no
+            body_format: json
+            body:
+              ResetType: "ForceRestart"
+          ignore_errors: yes
+
+        - name: "Rescue 2: 파이프라인 명시적 중단 (Fail)"
+          fail:
+            msg: "[장애 발생] 펌웨어 업데이트 중 심각한 오류가 발생하여 XCC 초기화를 시도했습니다."

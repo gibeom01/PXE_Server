@@ -1,0 +1,56 @@
+---
+- name: Dell iDRAC 물리 디스크 RAID 1 미러링 자동 구성
+  hosts: localhost # Mac 로컬에서 실행
+  gather_facts: no
+
+  vars:
+    # idrac_ip, idrac_user, idrac_password는 Terraform에서 런타임에 주입됨
+    controller_fqdd: "RAID.Integrated.1-1" # 레이드 컨트롤러 이름은 환경 공통이므로 유지
+
+  # 직관적인 문자열을 Redfish API 표준어로 번역해주는 사전(Dictionary)
+    raid_map:
+      "RAID 0": "NonRedundant"
+      "RAID 1": "Mirrored"
+      "RAID 5": "StripedWithParity"
+      "RAID 6": "StripedWithDoubleParity"
+      "RAID 10": "SpannedMirrors"
+
+  tasks:
+    - name: "Task 1: 기존 RAID 설정 초기화"
+      dellemc.openmanage.idrac_storage_controller:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        controller_id: "{{ controller_fqdd }}"
+        command: "clear"
+      ignore_errors: yes
+
+    - name: "Task 1.5: 컨트롤러 초기화 안정화 대기"
+      pause:
+        seconds: 15
+
+    - name: "Task 2: 1.2TB 디스크 2개로 RAID 1(Mirror) 생성"
+      dellemc.openmanage.idrac_storage_volume:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        state: "present"
+        # Terraform에서 전달된 item(JSON 객체)의 key 값들을 매핑합니다.
+        volume_name: "{{ item.name }}"
+        # Dell 모듈은 "RAID 1", "RAID 5" 텍스트를 그대로 인식합니다. (사전 불필요)
+        volume_type: "{{ item.type }}"
+        # tfvars의 FQDD 배열 데이터를 정규식 없이 그대로 꽂아 넣습니다.
+        drives: "{{ item.drives }}"
+      loop: "{{ raid_volumes }}" # 이 부분이 배열을 순회하며 다중 RAID를 깎아냅니다.
+      register: raid_result
+
+    - name: "Task 3: 구성 적용을 위한 강제 재부팅"
+      dellemc.openmanage.idrac_server_action:
+        idrac_ip: "{{ idrac_ip }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_password }}"
+        validate_certs: no
+        power_state: "ForceRestart"
+        

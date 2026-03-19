@@ -1,0 +1,32 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  # 네트워크 설정 (임시 DHCP)
+  network:
+    network:
+      version: 2
+      ethernets:
+        eth0:
+          match:
+            name: e*
+          dhcp4: true
+  # 사용자 계정 설정 (Root 활성화 및 비밀번호 LinuxP@ss123!)
+  identity:
+    hostname: ubuntu-server
+    password: "$6$rounds=4096$randomsalt$X5A8Q..." # (echo 'LinuxP@ss123!' | mkpasswd -m sha-512) 결과값 
+    username: ubuntu
+  ssh:
+    install-server: true
+    allow-pw: true
+  # 디스크 자동 설정 (LVM)
+  storage:
+    layout:
+      name: lvm
+  late-commands:
+    # Root SSH 접속 허용 처리
+    - sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /target/etc/ssh/sshd_config
+    - sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /target/etc/ssh/sshd_config
+    

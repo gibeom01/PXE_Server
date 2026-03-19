@@ -1,0 +1,68 @@
+---
+- name: OS 배포 및 원타임 부팅 지정
+  hosts: localhost  # Mac 로컬에서 실행
+  gather_facts: no
+  tasks:
+    - name: "기존 미디어 해제"
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.EjectMedia"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+      when: api_type == 'redfish'
+      ignore_errors: yes
+
+    - name: "Mac HTTP 서버의 커스텀 ISO 마운트 (Insert)"
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.InsertMedia"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          Image: "http://{{ mac_http_ip }}:{{ http_port }}/{{ iso_name }}"
+          Inserted: true
+      when: api_type == 'redfish'
+
+    - name: "마운트 성공 여부 확인 대기 (안정성 확보)"
+      pause:
+        seconds: 25 # bmc가 ISO 파일을 안정적으로 인식할 25초의 여유를 줍니다.
+      when: api_type == 'redfish'
+
+    - name: "1회성 부팅 대상을 CD로 지정"
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Systems/1"
+        method: PATCH
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          Boot:
+            BootSourceOverrideTarget: "Cd"
+            BootSourceOverrideEnabled: "Once"
+      when: api_type == 'redfish'
+      
+    - name: "OS 설치용 강제 재부팅"
+      # 전원이 꺼져있다면 켜고, 켜져있다면 강제로 재부팅합니다.
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ForceRestart"
+      when: api_type == 'redfish'
+        
+    # --- [ IBM M4 (IMM2/IPMI) 처리 ] ---
+    - name: "IBM M4: IPMI를 통한 1회성 PXE 부팅 지정 및 재부팅"
+      command: "ipmitool -I lanplus -H {{ bmc_ip }} -U {{ bmc_user }} -P {{ bmc_password }} chassis bootdev pxe"
+      when: api_type == 'ipmi'
+      
+    - name: "IBM M4: IPMI 전원 리셋"
+      command: "ipmitool -I lanplus -H {{ bmc_ip }} -U {{ bmc_user }} -P {{ bmc_password }} chassis power reset"
+      when: api_type == 'ipmi'

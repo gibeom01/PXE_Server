@@ -1,0 +1,112 @@
+---
+- name: Noblysis 사내망 공통 PXE/WDS 부팅 서버 구축
+  hosts: pxe_server # inventory.ini에 등록할 새로 생성한 Ubuntu VM의 IP
+  become: yes       # root 권한으로 실행
+  vars:
+    # 🎯 사내망 네트워크 환경에 맞게 이 부분만 수정하세요
+    pxe_server_ip: "192.168.50.2"       # 현재 이 PXE 서버(VM)의 IP
+    dhcp_range_start: "192.168.50.200"  # 부팅되는 깡통 서버들에게 임시로 뿌려줄 IP 시작
+    dhcp_range_end: "192.168.50.250"    # 임시 IP 끝
+    dhcp_subnet: "255.255.255.0"
+    dhcp_gateway: "192.168.50.1"
+    
+    # 내부 디렉토리 경로 (수정 불필요)
+    tftp_root: "/var/lib/tftpboot"
+    http_root: "/var/www/html/pxe"
+
+  tasks:
+    - name: "Task 1: 핵심 패키지 설치 (dnsmasq, nginx, syslinux)"
+      apt:
+        name:
+          - dnsmasq          # DHCP 및 TFTP 통합 데몬
+          - nginx            # 대용량 OS 파일 고속 전송용 HTTP 웹 서버
+          - pxelinux         # 네트워크 부트로더
+          - syslinux-common
+        state: present
+        update_cache: yes
+
+    - name: "Task 2: PXE 부팅 및 HTTP 파일 제공용 디렉토리 생성"
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ tftp_root }}/pxelinux.cfg"
+        - "{{ tftp_root }}/boot"
+        - "{{ http_root }}/ubuntu"
+        - "{{ http_root }}/rocky"
+        - "{{ http_root }}/windows"
+
+    - name: "Task 3: 부트 로더(PXELINUX) 파일을 TFTP 루트로 복사"
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: yes
+      loop:
+        - { src: "/usr/lib/PXELINUX/pxelinux.0", dest: "{{ tftp_root }}/pxelinux.0" }
+        - { src: "/usr/lib/syslinux/modules/bios/ldlinux.c32", dest: "{{ tftp_root }}/ldlinux.c32" }
+        - { src: "/usr/lib/syslinux/modules/bios/vesamenu.c32", dest: "{{ tftp_root }}/vesamenu.c32" }
+        - { src: "/usr/lib/syslinux/modules/bios/libcom32.c32", dest: "{{ tftp_root }}/libcom32.c32" }
+        - { src: "/usr/lib/syslinux/modules/bios/libutil.c32", dest: "{{ tftp_root }}/libutil.c32" }
+
+    - name: "Task 4: dnsmasq.conf (DHCP & TFTP) 설정 적용"
+      copy:
+        dest: /etc/dnsmasq.conf
+        content: |
+          # 1. DHCP 설정 (OS가 없는 서버에게 IP 부여)
+          interface=eth0
+          dhcp-range={{ dhcp_range_start }},{{ dhcp_range_end }},{{ dhcp_subnet }},12h
+          dhcp-option=3,{{ dhcp_gateway }}
+          dhcp-option=6,8.8.8.8
+          
+          # 2. TFTP 설정 (최초의 아주 작은 부트로더 파일 전송)
+          enable-tftp
+          tftp-root={{ tftp_root }}
+          
+          # 3. PXE 부트 로더 지정
+          dhcp-boot=pxelinux.0
+
+    - name: "Task 5: PXE 부팅 메뉴(default) 파일 생성 (Ubuntu 무인설치 예시)"
+      copy:
+        dest: "{{ tftp_root }}/pxelinux.cfg/default"
+        content: |
+          DEFAULT menu.c32
+          PROMPT 0
+          TIMEOUT 50
+          ONTIMEOUT ubuntu2204
+
+          MENU TITLE Noblysis Automated PXE Boot Menu
+
+          LABEL local
+            MENU LABEL Boot from local drive
+            LOCALBOOT 0
+
+          LABEL ubuntu2204
+            MENU LABEL Auto-Install Ubuntu 22.04 (IBM IMM2 Target)
+            KERNEL boot/ubuntu/vmlinuz
+            # TFTP 대신 Nginx(HTTP)를 통해 수 GB의 ISO 파일과 응답 파일을 초고속으로 땡겨옵니다.
+            APPEND initrd=boot/ubuntu/initrd url=http://{{ pxe_server_ip }}/pxe/ubuntu/ubuntu-22.04-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://{{ pxe_server_ip }}/pxe/ubuntu/ cloud-config-url=/dev/null ip=dhcp ---
+
+    - name: "Task 6: Nginx HTTP 서버 설정 (OS 이미지 제공용)"
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          server {
+              listen 80 default_server;
+              listen [::]:80 default_server;
+              root {{ http_root }};
+              server_name _;
+              location / {
+                  autoindex on;
+              }
+          }
+
+    - name: "Task 7: 서비스 재시작 및 시스템 부팅 시 자동 실행 활성화"
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - dnsmasq
+        - nginx
+        

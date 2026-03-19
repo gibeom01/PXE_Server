@@ -1,0 +1,113 @@
+---
+- name: HPE iLO 펌웨어 업데이트
+  hosts: localhost # Mac 로컬에서 실행하여 iLO으로 API를 쏘는 방식
+  gather_facts: no
+  
+  vars:
+    # ip, user,password, ver는 Terraform에서 주입됨
+    # Ansible 실행 위치 기준 상대 경로로 변경
+    fw_file_url: "http://{{ mac_http_ip }}:8000/CPXXXXXX.exe"
+
+  tasks:
+    # =========================================================
+    # Phase 1: iLO 4 (Gen9) 전용 Redfish 호환성 확보 업데이트
+    # =========================================================
+    - name: "[Phase 1] iLO 4 구버전을 위한 레거시 REST API 펌웨어 푸시"
+      uri:
+        # Redfish가 없는 2.30 미만 버전을 위해 구형 /rest/v1 엔드포인트 사용
+        url: "https://{{ ilo_ip }}/rest/v1/UpdateService"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        status_code: [200, 201, 202, 400, 404] # 이미 Redfish가 지원되는 버전일 경우의 에러 무시
+        body_format: json
+        body:
+          Action: "InstallFromURI"
+          FirmwareURI: "{{ ilo4_fw_url }}"
+      when: ilo_ver == "4" and ilo4_fw_url != ""
+      register: legacy_update
+      ignore_errors: yes
+
+    - name: "[Phase 1] iLO 4 신버전(2.30 이상)을 위한 표준 Redfish 펌웨어 푸시"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        status_code: [200, 201, 202]
+        body_format: json
+        body:
+          ImageURI: "{{ ilo4_fw_url }}"
+      # 레거시 API가 실패했거나 응답이 없을 경우 표준 Redfish API로 재시도
+      when: ilo_ver == "4" and ilo4_fw_url != "" and (legacy_update.status == 404 or legacy_update.status == 400)
+
+    # iLO 펌웨어 업데이트는 서버 재부팅이 아니라 'iLO 매니저 칩셋' 자체를 재부팅시킵니다 (약 2~4분 소요).
+    - name: "[Phase 1] iLO 칩셋 재부팅 및 펌웨어 플래싱 대기 (최초 2분)"
+      pause:
+        minutes: 2
+      when: ilo_ver == "4" and ilo4_fw_url != ""
+
+    - name: "[Phase 1] iLO Redfish API 응답 복구 확인 (스마트 Polling)"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Managers/1"
+        method: GET
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+      register: ilo_status
+      until: ilo_status.status == 200
+      retries: 30       # 10초 간격으로 최대 30번(5분) 찔러봄
+      delay: 10
+      when: ilo_ver == "4" and ilo4_fw_url != ""
+
+    # ---------------------------------------------------------
+    # 2. 안전 실행 구역 (여기가 핵심입니다. 기존 코드를 block 안에 넣습니다)
+    # ---------------------------------------------------------
+    - name: "펌웨어 업데이트 안전 실행 구역 (Try)"
+      block:
+        - name: "Task 2: 새 펌웨어 파일 업로드 및 설치 예약 (Job 생성. iLO 5, 6 및 업데이트된 iLO 4)"
+          uri:
+            url: "https://{{ ilo_ip }}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
+            method: POST
+            user: "{{ ilo_user }}"
+            password: "{{ ilo_password }}"
+            validate_certs: no
+            body_format: json
+            body:
+              ImageURI: "{{ fw_file_url }}" # (시스템 펌웨어 변수가 있을 경우)
+          when: fw_file_url is defined
+
+        - name: "Task 3: 펌웨어 적용을 위한 서버 강제 재부팅 (Power Cycle)"
+          # 펌웨어는 다음 재부팅(POST 과정) 시점에 실제 칩에 기록(Flash)됩니다.
+          uri:
+            url: "https://{{ ilo_ip }}/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset"
+            method: POST
+            user: "{{ ilo_user }}"
+            password: "{{ ilo_password }}"
+            validate_certs: no
+            body_format: json
+            body:
+              ResetType: "ForceRestart" # 강제로 껐다 켭니다.
+            when: fw_file_url is defined
+
+      # ---------------------------------------------------------
+      # 3. 에러 복구 구역 (위 block 안에서 단 하나라도 실패하면 즉시 여기로 넘어옵니다)
+      # ---------------------------------------------------------
+      rescue:
+        - name: "Rescue 1: iLO Job Queue 강제 초기화 (꼬인 대기열 롤백)"
+          uri:
+            url: "https://{{ ilo_ip }}/redfish/v1/Managers/1/Actions/Manager.Reset"
+            method: POST
+            user: "{{ ilo_user }}"
+            password: "{{ ilo_password }}"
+            validate_certs: no
+            body_format: json
+            body:
+              ResetType: "ForceRestart"
+          ignore_errors: yes
+
+        - name: "Rescue 2: 파이프라인 명시적 중단 (Fail)"
+          fail:
+            msg: "[장애 발생] 펌웨어 업데이트 중 심각한 오류가 발생하여 작업을 롤백했습니다. 대상 서버({{ ilo_ip }})의 상태를 수동으로 확인해 주세요."

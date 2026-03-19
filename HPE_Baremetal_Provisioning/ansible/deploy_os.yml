@@ -1,0 +1,51 @@
+---
+- name: HPE 가상 미디어 마운트 및 OS 배포
+  hosts: localhost  # Mac 로컬에서 실행
+  gather_facts: no
+  tasks:
+    - name: "기존 미디어 해제"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.EjectMedia"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+      ignore_errors: yes
+
+    - name: "Mac HTTP 서버의 커스텀 ISO 마운트 (Insert)"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Managers/1/VirtualMedia/2/Actions/VirtualMedia.InsertMedia"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          Image: "http://{{ mac_http_ip }}:{{ http_port }}/{{ iso_name }}"
+          Inserted: true
+
+    - name: "마운트 성공 여부 확인 대기 (안정성 확보)"
+      pause:
+        seconds: 25 # iLO가 ISO 파일을 안정적으로 인식할 25초의 여유를 줍니다.
+
+    - name: "1회성 부팅 대상을 CD로 지정"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1"
+        method: PATCH
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        body_format: json
+        body: { "Boot": { "BootSourceOverrideTarget": "Cd", "BootSourceOverrideEnabled": "Once" } }
+      
+    - name: "OS 설치용 강제 재부팅"
+      # 전원이 꺼져있다면 켜고, 켜져있다면 강제로 재부팅합니다.
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        body_format: json
+        body: { "ResetType": "ForceRestart" }
+        

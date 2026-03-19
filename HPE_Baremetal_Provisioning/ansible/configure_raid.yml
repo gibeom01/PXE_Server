@@ -1,0 +1,95 @@
+---
+- name: HPE iLO 다중 RAID 동적 구성
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    # ilo_ip, ilo_user, ilo_password, raid_volumes는 Terraform에서 주입됨
+    storage_id: "1"
+
+    # 1. iLO 5, 6용 직관적인 문자열을 Redfish API 표준어로 번역해주는 사전(Dictionary)
+    raid_map:
+      "RAID 0": "NonRedundant"
+      "RAID 1": "Mirrored"
+      "RAID 5": "StripedWithParity"
+      "RAID 6": "StripedWithDoubleParity"
+      "RAID 10": "SpannedMirrors"
+    
+    # 2. iLO 4용 사전 (HPE SmartStorage OEM 규격)
+    ilo4_raid_map:
+      "RAID 0": "Raid0"
+      "RAID 1": "Raid1"
+      "RAID 5": "Raid5"
+      "RAID 6": "Raid6"
+      "RAID 10": "Raid10"
+
+  tasks:
+    - name: "Task 1: 기존 RAID 설정 초기화"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Storage/1/Actions/Storage.ResetToDefaults"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ResetAll"
+      ignore_errors: yes
+      
+    - name: "Task 1.5: 컨트롤러 초기화 안정화 대기"
+      pause:
+        seconds: 15
+
+    # ---------------------------------------------------------
+    # iLO 5, 6 (Gen10, Gen11) - 표준 Redfish Storage API 사용
+    # ---------------------------------------------------------
+    - name: "[iLO 5, 6] 동적 다중 RAID 볼륨 생성"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Storage/{{ storage_id }}/Volumes"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        status_code: [200, 201, 202]
+        body_format: json
+        body:
+          Name: "{{ item.name }}"
+          # 핵심 수정 포인트: 사전에 Key가 없으면(즉, 사용자가 이미 "Mirrored"라고 쳤으면) 입력값 그대로 사용해라!
+          VolumeType: "{{ raid_map[item.type] | default(item.type) }}"
+          # Terraform에서 넘어온 숫자 배열(예: [1, 2])을 Redfish URI 형식 문자열 리스트로 파싱합니다.
+          Drives: "{{ item.drives | map('regex_replace', '^(.*)$', '{\"@odata.id\": \"/redfish/v1/Systems/1/Storage/' + storage_id + '/Drives/\\1\"}') | list }}"
+      loop: "{{ raid_volumes }}"
+      when: ilo_ver in ["5", "6"] # 5, 6버전일 때만 실행
+
+    # ---------------------------------------------------------
+    # iLO 4 (Gen9) - HPE SmartStorage OEM API 사용
+    # ---------------------------------------------------------
+    - name: "[iLO 4] SmartStorage API를 통한 RAID 볼륨 생성"
+      uri:
+        # 표준 API가 아닌 SmartStorage/Config 엔드포인트 사용
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/SmartStorage/Config"
+        method: PUT
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        status_code: [200, 202]
+        body_format: json
+        body:
+          LogicalDrives:
+            - LogicalDriveName: "{{ item.name }}"
+              # ilo4_raid_map 사전을 참조하여 "Raid1" 등으로 변환
+              RaidLevel: "{{ ilo4_raid_map[item.type] | default(item.type | replace(' ', '')) }}"
+              DataDrives: "{{ item.drives }}"
+      loop: "{{ raid_volumes }}"
+      when: ilo_ver == "4" # 4버전일 때만 실행
+
+    - name: "Task 3: 구성 적용을 위한 서버 강제 재부팅"
+      uri:
+        url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+        method: POST
+        user: "{{ ilo_user }}"
+        password: "{{ ilo_password }}"
+        validate_certs: no
+        body_format: json
+        body:
+          ResetType: "ForceRestart"

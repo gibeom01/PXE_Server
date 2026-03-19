@@ -1,0 +1,21 @@
+# ==========================================
+# Windows Server 그룹 (WinRM 통신 전용)
+# ==========================================
+[windows]
+%{ for name, server in servers ~}
+%{ if server.os_type == "windows" ~}
+# ${name}
+${server.os_ip} ansible_connection=winrm ansible_user=Administrator ansible_password="WinP@ss123!" ansible_winrm_server_cert_validation=ignore
+%{ endif ~}
+%{ endfor ~}
+
+# ==========================================
+# Linux Server 그룹 (SSH 통신 전용)
+# ==========================================
+[linux]
+%{ for name, server in servers ~}
+%{ if server.os_type == "rocky" || server.os_type == "ubuntu" || server.os_type == "centos" ~}
+# ${name}
+${server.os_ip} ansible_connection=ssh ansible_user=root ansible_password="LinuxP@ss123!" ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+%{ endif ~}
+%{ endfor ~}
