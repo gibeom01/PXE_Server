@@ -1,0 +1,37 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: ko_KR.UTF-8
+  keyboard:
+    layout: kr
+  ssh:
+    install-server: true
+    allow-pw: true
+  packages:
+    - openssh-server
+  identity:
+    hostname: ubuntu-vm
+    password: "$6$exYm6SREtuiButp6$6Z7.7m..82HbaMrc0.S.S1Tz.vU1v89kY8x.0L766yU6Cdfk1"
+    username: admin
+  network:
+    network:
+      version: 2
+      ethernets:
+        ens160:
+          dhcp4: false
+          addresses: ["192.168.206.10/24"]
+          gateway4: 192.168.206.2
+          nameservers:
+            addresses: ["8.8.8.8"]
+  late-commands:
+    - curtin in-target -- apt-get update
+    - curtin in-target -- apt-get install -y sysstat chrony
+    - curtin in-target -- systemctl enable sysstat
+    - curtin in-target -- systemctl start sysstat
+    - curtin in-target -- systemctl enable chrony
+    - curtin in-target -- systemctl start chrony
+    - curtin in-target -- sed -i 's/#Port 22/Port 60022/' /etc/ssh/sshd_config
+    - curtin in-target -- bash -c 'echo "admin:!Password2026" | chpasswd'
+    - curtin in-target -- bash -c 'echo "root:!Password2026" | chpasswd'
+    - curtin in-target -- ufw disable
+    
