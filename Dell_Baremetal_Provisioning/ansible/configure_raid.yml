@@ -16,6 +16,25 @@
       "RAID 10": "SpannedMirrors"
 
   tasks:
+    # ---------------------------------------------------------
+    # 메인보드 BIOS 공장 초기화
+    # ---------------------------------------------------------
+    - name: "Task 0: [Dell] BIOS 설정을 공장 기본값으로 초기화 (Reset to Defaults)"
+      when: clear_bios | default('true') | bool
+      uri:
+        url: "https://{{ idrac_ip }}/redfish/v1/Systems/System.Embedded.1/Bios/Actions/Bios.ResetBios"
+        method: POST
+        user: "{{ idrac_user }}"
+        password: "{{ idrac_password }}"
+        validate_certs: no
+        status_code: [200, 202, 204] # 주의: 이 Task는 Dell 전용 모듈이 아닌 범용 uri 모듈을 쓰므로 status_code가 필요합니다!
+        body_format: json
+        body: {}
+      ignore_errors: yes
+
+    # ---------------------------------------------------------
+    # 물리 디스크 초기화 및 RAID 구성
+    # ---------------------------------------------------------
     - name: "Task 1: 기존 RAID 설정 초기화"
       when: clear_physical_disks | default('true') | bool # 핵심: Terraform에서 넘겨준 clear_physical_disks가 true일 때만 초기화를 수행합니다.
       dellemc.openmanage.idrac_storage_controller:
@@ -48,6 +67,9 @@
       loop: "{{ raid_volumes }}" # 이 부분이 배열을 순회하며 다중 RAID를 깎아냅니다.
       register: raid_result
 
+    # ---------------------------------------------------------
+    # 구성 적용 및 재부팅
+    # ---------------------------------------------------------
     - name: "Task 3: 구성 적용을 위한 강제 재부팅 (Job Queue 실행)"
       dellemc.openmanage.idrac_server_action:
         idrac_ip: "{{ idrac_ip }}"
