@@ -2,18 +2,18 @@ clear_physical_disks  = true
 clear_bios           = true
 global_idrac_user     = "root"
 global_idrac_password = "calvin"
-mac_http_ip           = "192.168.0.100"
+mac_http_ip           = "192.168.0.100"       # MAC 수동으로 넣었던 대역
 
 # 대상 서버 목록 (for_each가 순회할 Map 데이터)
 servers = {
   # 1번 서버: 14G(iDRAC 9) 장비, OS용 RAID 1과 Data용 RAID 5 혼합 구성
   "idc-node-01"   = {
-    idrac_ip      = "10.10.10.120"
-    os_ip         = "192.168.50.10"
+    idrac_ip      = "10.10.10.120"             # 전면 iDARC 연결 대역
+    os_ip         = "192.168.50.10"            # 실제 서비스용 대역 (나중에 설정 가능)
     idrac_ver     = "9"                        # R640 장비 (14, 15, 16G)
     http_port     = 8001
-    os_type       = "windows"                  # OS 타입 지정
-    iso_name      = "Win2019_Auto.iso"         # 마운트할 ISO 이름
+    os_type       = "windows"                  # OS 타입 지정 (OS 미설치 시 주석처리)
+    iso_name      = "Win2019_Auto.iso"         # 마운트할 ISO 이름 (OS 미설치 시 주석처리)
     raid_volumes  = [
       {
         name      = "OS_RAID1"
