@@ -62,7 +62,7 @@ resource "null_resource" "hardware_provisioning" {
         -e '{"raid_volumes": ${jsonencode(each.value.raid_volumes)}}' \
         2>&1 | tee ../logs/${each.key}_02_raid.logg
       
-      # 3) 독립 웹서버 구동 및 OS 배포 # OS 미설치 시 3번 전부 주석처리
+      # 3) 독립 웹서버 구동 및 OS 배포 <- OS 미설치 시 3번 전부 주석처리
       cd ../ISO
       python3 -m http.server ${each.value.http_port} &
       HTTP_PID=$!
@@ -80,7 +80,7 @@ resource "null_resource" "hardware_provisioning" {
 }
  
 # ---------------------------------------------------------
-# 3. 동적 인벤토리 생성 (OS 타입별 그룹화) # OS 미설치 시 3번 전부 주석처리
+# 3. 동적 인벤토리 생성 (OS 타입별 그룹화) <- OS 미설치 시 3번 전부 주석처리
 # ---------------------------------------------------------
 resource "local_file" "ansible_inventory" {
   # inventory.ini에 각 서버별 임시 IP와 최종 할당할 목표 IP(target_os_ip)를 매핑해줍니다.
@@ -91,7 +91,7 @@ resource "local_file" "ansible_inventory" {
 }
 
 # ---------------------------------------------------------
-# 4. OS 사후 환경 설정 (노드별 개별 실행 및 핀셋 복구 지원) # OS 미설치 시 4번 전부 주석처리
+# 4. OS 사후 환경 설정 (노드별 개별 실행 및 핀셋 복구 지원) <- OS 미설치 시 4번 전부 주석처리
 # ---------------------------------------------------------
 resource "null_resource" "os_post_config" {
   for_each   = var.servers
