@@ -25,9 +25,21 @@
         msg: "IBM M4 장비는 Redfish API를 지원하지 않으므로, 부팅 시 Ctrl+H 등을 통한 수동 RAID 구성이 사전 요구됩니다."
       when: api_type == 'ipmi'
 
-    # ---------------------------------------------------------
-    # Lenovo (Redfish) RAID 구성
-    # ---------------------------------------------------------
+    - name: "Task 0: [Lenovo] BIOS 설정을 공장 기본값으로 초기화 (Reset to Defaults)"
+      when: 
+        - api_type == 'redfish'
+        - clear_bios | default('true') | bool
+      uri:
+        url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Bios/Actions/Bios.ResetBios"
+        method: POST
+        user: "{{ bmc_user }}"
+        password: "{{ bmc_password }}"
+        validate_certs: no
+        status_code: [200, 202, 204]
+        body_format: json
+        body: {}
+      ignore_errors: yes
+
     - name: "Task 1: [Lenovo] 기존 RAID 설정 초기화 (Clear Configuration)"
       when: 
         - api_type == 'redfish'
