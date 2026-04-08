@@ -58,6 +58,7 @@ resource "null_resource" "hardware_provisioning" {
         
         ansible-playbook configure_raid.yml \
           -e "bmc_ip=${each.value.bmc_ip} bmc_user=${var.global_bmc_user} bmc_password=${var.global_bmc_password}" \
+          -e "clear_physical_disks=${var.clear_physical_disks}" \
           -e '{"raid_volumes": ${jsonencode(each.value.raid_volumes)}}' >> ../logs/${each.key}_hw.log 2>&1
       else
         # IBM IMM2 같은 레거시 장비는 이 단계를 안전하게 건너뜁니다.
