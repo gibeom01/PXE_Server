@@ -33,6 +33,26 @@
       ignore_errors: yes
 
     # ---------------------------------------------------------
+    # 디스크 Foreign 상태 강제 해제
+    # ---------------------------------------------------------
+    - name: "Task 0.5: [강제] 디스크 Foreign 잠금 상태 즉시 해제 (racadm CLI)"
+      when: clear_physical_disks | default('true') | bool
+      # Ansible의 raw 모듈을 사용해 iDRAC에 SSH로 접속 후 racadm 명령어를 직격합니다.
+      ansible.builtin.raw: "racadm storage clearforeignconfig -c {{ controller_fqdd }}"
+      delegate_to: "{{ idrac_ip }}"
+      vars:
+        ansible_connection: ssh
+        ansible_user: "{{ idrac_user }}"
+        ansible_password: "{{ idrac_password }}"
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      ignore_errors: yes
+
+    - name: "Task 0.6: Foreign 해제 안정화 대기"
+      when: clear_physical_disks | default('true') | bool
+      pause:
+        seconds: 15
+
+    # ---------------------------------------------------------
     # 물리 디스크 초기화 및 RAID 구성
     # ---------------------------------------------------------
     - name: "Task 1: 기존 RAID 설정 초기화"
