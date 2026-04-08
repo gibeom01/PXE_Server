@@ -25,6 +25,7 @@
 
   tasks:
     - name: "Task 1: 기존 RAID 설정 초기화"
+      when: clear_physical_disks | default('true') | bool # Terraform 변수 조건 추가: true일 때만 실행
       uri:
         url: "https://{{ ilo_ip }}/redfish/v1/Systems/1/Storage/1/Actions/Storage.ResetToDefaults"
         method: POST
@@ -37,6 +38,7 @@
       ignore_errors: yes
       
     - name: "Task 1.5: 컨트롤러 초기화 안정화 대기"
+      when: clear_physical_disks | default('true') | bool
       pause:
         seconds: 15
 
