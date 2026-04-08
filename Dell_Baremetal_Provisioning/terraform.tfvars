@@ -1,4 +1,5 @@
 clear_physical_disks  = true
+clear_bios           = true
 global_idrac_user     = "root"
 global_idrac_password = "calvin"
 mac_http_ip           = "192.168.0.100"
