@@ -15,7 +15,7 @@ MAC Air 기준
 
 # 3. Mac 네트워크 대역 설정 (초기 접속용):
 
-- Dell 서버(iDRAC 초기 IP: 192.168.0.120) 기준 Mac에 래선 젠더 꽂고 랜 케이블 -> 서버 뒷면 iDRAC 전용 포트(스패너 모양) 연결.
+- HPE 서버(iLO 초기 IP: 192.168.0.120) 기준 Mac에 래선 젠더 꽂고 랜 케이블 -> 서버 뒷면 iLO 전용 포트(스패너 모양) 연결.
 - Mac(애플 메뉴) -> 시스템 설정(System Settings) -> 네트워크(Network)
 - [세부사항...] 버튼 클릭 -> [TCP/IP] 탭 이동.
 - 'IPv4 구성'을 'DHCP 서버를 사용하여' -> '수동(Manually)' 변경.
@@ -56,7 +56,7 @@ drives:
 # 7. Terraform 고려 사항:
 
 - HTTP 웹 서버의 늪: 3단계(OS 배포)에서 python3 -m http.server를 실행하면 터미널이 멈춰서 다음 작업으로 넘어가지 않습니다.
-👉 해결: Terraform 내에서 웹 서버를 백그라운드로 몰래 띄우고, Ansible이 iDRAC에 ISO를 마운트시키고 나면 웹 서버를 자동으로 종료(Kill)하도록 쉘 스크립팅을 혼합합니다.
+👉 해결: Terraform 내에서 웹 서버를 백그라운드로 몰래 띄우고, Ansible이 iLO에 ISO를 마운트시키고 나면 웹 서버를 자동으로 종료(Kill)하도록 쉘 스크립팅을 혼합합니다.
 
 - Windows 설치 대기 시간: 서버가 재부팅되고 Windows가 설치되는 데에는 물리적으로 약 20~30분이 소요됩니다. 4번 Playbook이 곧바로 실행되면 접속 실패(WinRM Not Found)가 발생합니다.
 👉 해결: OS 설치가 끝날 때까지 Terraform이 충분히 대기(sleep)하도록 타임아웃을 설정합니다.
