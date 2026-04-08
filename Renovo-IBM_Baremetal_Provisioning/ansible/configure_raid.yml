@@ -29,6 +29,9 @@
     # Lenovo (Redfish) RAID 구성
     # ---------------------------------------------------------
     - name: "Task 1: [Lenovo] 기존 RAID 설정 초기화 (Clear Configuration)"
+      when: 
+        - api_type == 'redfish'
+        - clear_physical_disks | default('true') | bool
       uri:
         url: "https://{{ bmc_ip }}/redfish/v1/Systems/1/Storage/{{ storage_id }}/Actions/Storage.ResetToDefaults"
         method: POST
@@ -39,13 +42,14 @@
         body_format: json
         body:
           ResetType: "ResetAll"
-      when: api_type == 'redfish'
       ignore_errors: yes
       
     - name: "Task 1.5: [Lenovo] 컨트롤러 초기화 안정화 대기"
+      when:
+        - api_type == 'redfish'
+        - clear_physical_disks | default('true') | bool
       pause:
         seconds: 15
-      when: api_type == 'redfish'
 
     - name: "Task 2: [Lenovo] 동적 다중 RAID 볼륨 생성"
       uri:
