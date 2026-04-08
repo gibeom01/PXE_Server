@@ -2,14 +2,14 @@ terraform {
   required_version = ">= 1.0.0" # [cite: 1]
 }
 
-# tfvars에 정의된 서버 목록에서 '고유한 OS 타입'만 추출하여 배열로 만듭니다.
+# tfvars에 정의된 서버 목록에서 '고유한 OS 타입'만 추출하여 배열로 만듭니다. <- OS 미설치 시 locals 전부 주석처리
 # 결과 예시: ["windows", "rocky", "ubuntu"]
 locals {
   unique_os_types = toset([for k, v in var.servers : v.os_type])
 }
 
 # ---------------------------------------------------------
-# 1. 커스텀 ISO 동적 생성 (OS 타입별 1회씩만 실행)
+# 1. 커스텀 ISO 동적 생성 (OS 타입별 1회씩만 실행) <- OS 미설치 시 1번 전부 주석처리
 # ---------------------------------------------------------
 resource "null_resource" "make_iso" {
   for_each = local.unique_os_types
