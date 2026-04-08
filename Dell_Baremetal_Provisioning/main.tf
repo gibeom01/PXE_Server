@@ -62,7 +62,7 @@ resource "null_resource" "hardware_provisioning" {
         -e '{"raid_volumes": ${jsonencode(each.value.raid_volumes)}}' \
         2>&1 | tee ../logs/${each.key}_02_raid.logg
       
-      # 3) 독립 웹서버 구동 및 OS 배포 <- OS 미설치 시 3번 전부 주석처리
+      # 3) 독립 웹서버 구동 및 OS 배포 <- OS 미설치 시 2-3번 전부 주석처리
       cd ../ISO
       python3 -m http.server ${each.value.http_port} &
       HTTP_PID=$!
