@@ -17,20 +17,21 @@
 
   tasks:
     - name: "Task 1: 기존 RAID 설정 초기화"
+      when: clear_physical_disks | default('true') | bool # 핵심: Terraform에서 넘겨준 clear_physical_disks가 true일 때만 초기화를 수행합니다.
       dellemc.openmanage.idrac_storage_controller:
         idrac_ip: "{{ idrac_ip }}"
         idrac_user: "{{ idrac_user }}"
         idrac_password: "{{ idrac_password }}"
         validate_certs: no
         controller_id: "{{ controller_fqdd }}"
-        command: "clear"
+        command: "clear" # RAID 컨트롤러의 기존 설정(VD 및 Foreign Config)을 모두 날립니다.
       ignore_errors: yes
 
     - name: "Task 1.5: 컨트롤러 초기화 안정화 대기"
       pause:
         seconds: 15
 
-    - name: "Task 2: 1.2TB 디스크 2개로 RAID 1(Mirror) 생성"
+    - name: "Task 2: 볼륨 동적 생성"
       dellemc.openmanage.idrac_storage_volume:
         idrac_ip: "{{ idrac_ip }}"
         idrac_user: "{{ idrac_user }}"
@@ -46,7 +47,7 @@
       loop: "{{ raid_volumes }}" # 이 부분이 배열을 순회하며 다중 RAID를 깎아냅니다.
       register: raid_result
 
-    - name: "Task 3: 구성 적용을 위한 강제 재부팅"
+    - name: "Task 3: 구성 적용을 위한 강제 재부팅 (Job Queue 실행)"
       dellemc.openmanage.idrac_server_action:
         idrac_ip: "{{ idrac_ip }}"
         idrac_user: "{{ idrac_user }}"
