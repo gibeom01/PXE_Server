@@ -25,7 +25,19 @@ if [ "$OS_TYPE" == "rocky" ]; then
     hdiutil detach /Volumes/Rocky_ISO
     
     echo "3. ks.cfg 삽입..."
-    cp "$BASE_DIR/rocky_ks.cfg" "$WORK_DIR/ks.cfg"
+    cat << 'EOF' > "$WORK_DIR/ks.cfg"
+# Install OS instead of upgrade
+install
+cdrom
+text
+# 방금 만든 물리 디스크(RAID 볼륨)의 모든 파티션 묻지 않고 자동 포맷
+clearpart --all --initlabel
+autopart --type=lvm
+# 기본 계정 설정 (Root 비밀번호: LinuxP@ss123!)
+rootpw --plaintext LinuxP@ss123!
+timezone Asia/Seoul
+reboot
+EOF
     
     echo "4. 부트로더(GRUB/ISOLINUX) 수정 (ks.cfg 자동 인식)..."
     # Mac용 sed는 -i 옵션 뒤에 백업 확장자('')를 명시해야 합니다.
@@ -44,8 +56,26 @@ elif [ "$OS_TYPE" == "ubuntu" ]; then
     
     echo "3. nocloud 디렉토리 생성 및 user-data, meta-data 삽입..."
     mkdir -p "$WORK_DIR/nocloud"
-    cp "$BASE_DIR/ubuntu_user-data" "$WORK_DIR/nocloud/user-data"
-    cp "$BASE_DIR/ubuntu_meta-data" "$WORK_DIR/nocloud/meta-data"
+
+    # meta-data는 빈 파일이어도 무방합니다.
+    touch "$WORK_DIR/nocloud/meta-data"
+
+    # user-data (Autoinstall) 동적 생성
+    cat << 'EOF' > "$WORK_DIR/nocloud/user-data"
+#cloud-config
+autoinstall:
+  version: 1
+  identity:
+    hostname: linux-server
+    # Root 비밀번호 설정
+    password: "$6$ex.UUGBNYsUP$2... (여기에 터미널에서 나온 긴 문자열 붙여넣기)"
+    username: root
+  storage:
+    layout:
+      name: lvm
+      match:
+        size: largest  # 가장 큰 디스크(RAID 볼륨)를 찾아 묻지 않고 자동 포맷
+EOF
     
     echo "4. 부트로더(GRUB) 수정 (Autoinstall 자동 인식)..."
     sed -i '' 's/---/autoinstall ds=nocloud;s=\/cdrom\/nocloud\/ ---/g' "$WORK_DIR/boot/grub/grub.cfg"
