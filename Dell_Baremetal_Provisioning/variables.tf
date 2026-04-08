@@ -30,11 +30,11 @@ variable "servers" {
   description     = "IDC 프로비저닝 대상 서버 목록"
   type            = map(object({
     idrac_ip      = string
-    os_ip         = string        # OS 설치 완료 후 최종적으로 할당될 고정 IP
+    os_ip         = string        # OS 설치 완료 후 최종적으로 할당될 고정 IP (나중에 설정 가능)
     idrac_ver     = string
     http_port     = number
-    os_type       = string        # "windows", "rocky", "ubuntu" 등
-    iso_name      = string        # 마운트할 커스텀 ISO 파일명
+    os_type       = string        # "windows", "rocky", "ubuntu" 등 (OS 미설치 시 주석처리)
+    iso_name      = string        # 마운트할 커스텀 ISO 파일명 (OS 미설치 시 주석처리)
     
     # 다중 RAID 볼륨 구성을 위한 중첩 객체 리스트(List of Objects)
     raid_volumes  = list(object({
