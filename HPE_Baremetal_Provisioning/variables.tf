@@ -1,3 +1,9 @@
+variable "clear_physical_disks" {
+  description = "모든 서버의 기존 RAID 구성을 무조건 초기화할지 여부 (true/false)"
+  type        = bool
+  default     = true
+}
+
 variable "global_ilo_user" {
   description = "iLO 공통 관리자 계정"
   type        = string
