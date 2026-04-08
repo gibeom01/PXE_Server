@@ -4,6 +4,12 @@ variable "clear_physical_disks" {
   default     = true
 }
 
+variable "clear_bios" {
+  description = "모든 서버의 BIOS 설정을 공장 기본값으로 초기화할지 여부 (true/false)"
+  type        = bool
+  default     = true
+}
+
 variable "global_idrac_user" {
   description = "iDRAC 공통 관리자 계정"
   type        = string
