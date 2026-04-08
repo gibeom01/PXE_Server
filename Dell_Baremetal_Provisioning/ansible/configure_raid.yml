@@ -28,6 +28,7 @@
       ignore_errors: yes
 
     - name: "Task 1.5: 컨트롤러 초기화 안정화 대기"
+      when: clear_physical_disks | default('true') | bool
       pause:
         seconds: 15
 
