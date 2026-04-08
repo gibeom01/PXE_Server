@@ -93,6 +93,7 @@ drives:
 
 - (Ansible로 1개씩 테스트 후 진행)
 
+- python3 -m http.server 8000 (자동화 수행 시 명령어를 실행한 채로 두는 것이 필수적 -> 다른 터미널 창 열고 나머지 수행)
 - terraform init                                                                        ->(초기화 및 Terraform 플러그인을 다운로드)
 - terraform validate                                                                    -> (문법 에러 체크)
 - terraform plan                                                                        -> (실행 계획 출력)
