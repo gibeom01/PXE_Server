@@ -38,7 +38,7 @@ resource "null_resource" "make_iso" {
 # ---------------------------------------------------------
 resource "null_resource" "hardware_provisioning" {
   for_each   = var.servers
-  depends_on = [null_resource.make_iso]
+  depends_on = [null_resource.make_iso] # OS 미설치 시 주석처리
 
   provisioner "local-exec" {
     # 특정 노드(예: idc-node-03) 실패 시 파이프라인 전체 중단 방지. -e 옵션으로 변수를 동적 주입합니다.
@@ -65,7 +65,7 @@ resource "null_resource" "hardware_provisioning" {
         echo "IPMI(레거시) 장비이므로 펌웨어/RAID 자동 구성을 건너뜁니다."
       fi
       
-      # 2. 가상 미디어 연결 및 OS 배포 (Lenovo, IBM 공통 실행하되 내부에서 분기)
+      # 2. 가상 미디어 연결 및 OS 배포 (Lenovo, IBM 공통 실행하되 내부에서 분기) <- OS 미설치 시 2-2번 전부 주석처리
       cd ../ISO
       python3 -m http.server ${each.value.http_port} &
       HTTP_PID=$!
@@ -82,7 +82,7 @@ resource "null_resource" "hardware_provisioning" {
 }
  
 # ---------------------------------------------------------
-# 3. 동적 인벤토리 생성 (OS 타입별 그룹화)
+# 3. 동적 인벤토리 생성 (OS 타입별 그룹화) <- OS 미설치 시 3번 전부 주석처리
 # ---------------------------------------------------------
 resource "local_file" "ansible_inventory" {
   # inventory.ini에 각 서버별 임시 IP와 최종 할당할 목표 IP(target_os_ip)를 매핑해줍니다.
@@ -93,7 +93,7 @@ resource "local_file" "ansible_inventory" {
 }
 
 # ---------------------------------------------------------
-# 4. OS 사후 환경 설정 (노드별 개별 실행 및 핀셋 복구 지원)
+# 4. OS 사후 환경 설정 (노드별 개별 실행 및 핀셋 복구 지원) <- OS 미설치 시 4번 전부 주석처리
 # ---------------------------------------------------------
 resource "null_resource" "os_post_config" {
   for_each   = var.servers
