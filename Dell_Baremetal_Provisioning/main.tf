@@ -58,8 +58,9 @@ resource "null_resource" "hardware_provisioning" {
       # 2) 다중 RAID 동적 구성 (jsonencode를 통한 배열 주입)
       ansible-playbook configure_raid.yml \
         -e "idrac_ip=${each.value.idrac_ip} idrac_user=${var.global_idrac_user} idrac_password=${var.global_idrac_password}" \
+        -e "clear_physical_disks=${var.clear_physical_disks}" \
         -e '{"raid_volumes": ${jsonencode(each.value.raid_volumes)}}' \
-        2>&1 | tee ../logs/${each.key}_02_raid.log
+        2>&1 | tee ../logs/${each.key}_02_raid.logg
       
       # 3) 독립 웹서버 구동 및 OS 배포
       cd ../ISO
