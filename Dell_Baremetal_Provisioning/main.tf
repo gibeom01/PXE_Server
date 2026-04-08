@@ -59,6 +59,7 @@ resource "null_resource" "hardware_provisioning" {
       ansible-playbook configure_raid.yml \
         -e "idrac_ip=${each.value.idrac_ip} idrac_user=${var.global_idrac_user} idrac_password=${var.global_idrac_password}" \
         -e "clear_physical_disks=${var.clear_physical_disks}" \
+        -e "clear_bios=${var.clear_bios}" \
         -e '{"raid_volumes": ${jsonencode(each.value.raid_volumes)}}' \
         2>&1 | tee ../logs/${each.key}_02_raid.logg
       
