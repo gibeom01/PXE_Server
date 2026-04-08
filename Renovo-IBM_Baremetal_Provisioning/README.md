@@ -39,6 +39,7 @@ drives:
 
 # 6. 파일 싫행 준비:
 
+- OS 미설치 시에는 main.tf 파일 주석 처리 해야함 (2번 depends_on, 2-3번 전부, 3, 4번 전부)
 - Ubuntu만 make_linux_iso.sh 파일에 password: 구문에 넣을 암호를 Mac 터미널에서 출력한 암호 복붙하고 실행. (명령어: openssl passwd -6 "원하는 PW로")
 - ISO 폴더에 .iso 넣고 진행.
 - 폴더를 ~/Desktop/ 위치에 옮겨 진행.
