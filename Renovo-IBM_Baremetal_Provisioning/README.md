@@ -22,9 +22,9 @@ MAC Air 기준
 - Addr(192.168.0.100), Sub(255.255.255.0), gw(X) 입력 -> 저장.
 - 브라우저 "https://192.168.0.120" 접속 -> 초기 계정(root/calvin 또는 태그 비밀번호) 로그인 확인.
 
-# 4. Disk 추가, 삭제 방법:
+# 4. Disk 추가, 삭제 방법: 
 
-- configur_raid.yml 파일 drives 목록 항목 추가, 삭제.
+- configur_raid.yml 파일 drives 목록 항목 추가, 삭제. (SSD, HDD 같이 사용 시 되도록 SSD를 0,1 처럼 앞쪽 베이에 OS용도로 사용 구성 추천)
 - 예시 
 drives:
     - "Disk.Bay.0:Enclosure.Internal.0-1:{{ controller_fqdd }}"
