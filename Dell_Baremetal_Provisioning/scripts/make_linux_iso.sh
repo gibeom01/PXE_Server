@@ -16,8 +16,8 @@ rm -rf "${WORK_DIR:?}"/*
 
 if [ "$OS_TYPE" == "rocky" ]; then
     echo "=== [Rocky Linux/CentOS ISO 리패키징 시작] ==="
-    ORIGINAL_ISO="$BASE_DIR/Rocky-8.iso" # 준비하신 원본 ISO 이름으로 변경하세요
-    CUSTOM_ISO="$BASE_DIR/Rocky-8-Auto.iso"
+    ORIGINAL_ISO="$BASE_DIR/Rocky_8.iso" # 준비하신 원본 ISO 이름으로 변경하세요
+    CUSTOM_ISO="$BASE_DIR/Rocky_8_Auto.iso"
     
     echo "2. 원본 ISO 마운트 및 복사..."
     hdiutil attach "$ORIGINAL_ISO" -mountpoint /Volumes/Rocky_ISO -noverify -nobrowse
@@ -46,8 +46,8 @@ EOF
 
 elif [ "$OS_TYPE" == "ubuntu" ]; then
     echo "=== [Ubuntu Server ISO 리패키징 시작] ==="
-    ORIGINAL_ISO="$BASE_DIR/Ubuntu-22.04.iso" # 준비하신 원본 ISO 이름으로 변경하세요
-    CUSTOM_ISO="$BASE_DIR/Ubuntu-22.04-Auto.iso"
+    ORIGINAL_ISO="$BASE_DIR/Ubuntu_22.04.iso" # 준비하신 원본 ISO 이름으로 변경하세요
+    CUSTOM_ISO="$BASE_DIR/Ubuntu_22.04_Auto.iso"
     
     echo "2. 원본 ISO 마운트 및 복사..."
     hdiutil attach "$ORIGINAL_ISO" -mountpoint /Volumes/Ubuntu_ISO -noverify -nobrowse
