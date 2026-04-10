@@ -46,7 +46,10 @@ MAC Air 기준
 - brew tap hashicorp/tap -> brew install hashicorp/tap/terraform # MAC 기준 Terraform 설치
 - brew install ansible # MAC 기준 Ansible 설치
 - pip3 install requests omsdk -> 에러 발생 시 pip3 install requests omsdk --break-system-packages # Python 라이브러리 설치
-- ansible-galaxy collection install dellemc.openmanage # Ansible 모듈 설치
+- 그래도 오류 발생하면 pip3 install --user requests omsdk # 옵션 빼고 --user 권한으로 설치
+- /Library/Developer/CommandLineTools/usr/bin/python3 -m pip install --upgrade pip
+pip3 install requests omsdk # pip 업데이트 후 설치 (정석)
+- ansible-galaxy collection install dellemc.openmanage # Ansible 모듈 설치 (가장 추천)
 - brew tap esolitos/ipa -> brew install sshpass # sshpass 설치
 
 # 5. Disk 추가, 삭제 방법:
