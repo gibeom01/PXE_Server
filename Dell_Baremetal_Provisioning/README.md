@@ -42,7 +42,14 @@ MAC Air 기준
 - Addr(192.168.0.100), Sub(255.255.255.0), gw(X) 입력 -> 저장.
 - 브라우저 "https://192.168.0.120" 접속 -> 초기 계정(root/calvin 또는 태그 비밀번호) 로그인 확인.
 
-# 4. Disk 추가, 삭제 방법:
+# 4. 자동화 환경 구성방법:
+- brew tap hashicorp/tap -> brew install hashicorp/tap/terraform # MAC 기준 Terraform 설치
+- brew install ansible # MAC 기준 Ansible 설치
+- pip3 install requests omsdk -> 에러 발생 시 pip3 install requests omsdk --break-system-packages # Python 라이브러리 설치
+- ansible-galaxy collection install dellemc.openmanage # Ansible 모듈 설치
+- brew tap esolitos/ipa -> brew install sshpass # sshpass 설치
+
+# 5. Disk 추가, 삭제 방법:
 
 - configur_raid.yml 파일 drives 목록 항목 추가, 삭제. (SSD, HDD 같이 사용 시 되도록 SSD를 0,1 처럼 앞쪽 베이에 OS용도로 사용 구성 추천)
 - 예시 
@@ -51,13 +58,13 @@ drives:
     - "Disk.Bay.1:Enclosure.Internal.0-1:{{ controller_fqdd }}"
     - "Disk.Bay.2:Enclosure.Internal.0-1:{{ controller_fqdd }}" # 추가된 디스크
 
-# 5. RAID 레벨 변경방법: 
+# 6. RAID 레벨 변경방법: 
 
 - configur_raid.yml 파일 내 코드 변수 값 수정.
 - RAID 0 구성 시는 volume_type: "Stripe" (또는 "RAID 0"), 조건 drives 목록 최소 1개 이상.
 - RAID 5 구성 시는 volume_type: "Parity" (또는 "RAID 5"), 조건 drives 목록에 최소 3개 이상의 디스크 기재.
 
-# 6. 파일 실행 준비:
+# 7. 파일 실행 준비:
 
 - OS 미설치 시에는 main.tf, terraform.tfvars 파일 주석 처리 해야함 (main.tf는 locals 전부, 1번 전부, 2번 depends_on, 2-3번 전부 삭제, 3, 4번 전부, terraform.tfvars는 os_type, iso_name 주석처리)
 - Ubuntu만 make_linux_iso.sh 파일에 password: 구문에 넣을 암호를 Mac 터미널에서 출력한 암호 복붙하고 실행. (명령어: openssl passwd -6 "원하는 PW로")
@@ -75,7 +82,7 @@ drives:
 ###### Ubuntu ISO 생성
 ./make_linux_iso.sh ubuntu
 
-# 7. Terraform 고려 사항:
+# 8. Terraform 고려 사항:
 
 - HTTP 웹 서버의 늪: 3단계(OS 배포)에서 python3 -m http.server를 실행하면 터미널이 멈춰서 다음 작업으로 넘어가지 않습니다.
 👉 해결: Terraform 내에서 웹 서버를 백그라운드로 몰래 띄우고, Ansible이 iDRAC에 ISO를 마운트시키고 나면 웹 서버를 자동으로 종료(Kill)하도록 쉘 스크립팅을 혼합합니다.
@@ -83,13 +90,13 @@ drives:
 - Windows 설치 대기 시간: 서버가 재부팅되고 Windows가 설치되는 데에는 물리적으로 약 20~30분이 소요됩니다. 4번 Playbook이 곧바로 실행되면 접속 실패(WinRM Not Found)가 발생합니다.
 👉 해결: OS 설치가 끝날 때까지 Terraform이 충분히 대기(sleep)하도록 타임아웃을 설정합니다.
 
-# 8. 문법 검증 방법
+# 9. 문법 검증 방법
 
 - 문법 검증 (Syntax Check) -> ansible-playbook linux_config.yml --syntax-check -i inventory.ini
 - 가상 실행 (Dry-run / Check Mode) -> ansible-playbook linux_config.yml --check -i inventory.ini
 - 변경점 상세 비교 (Diff Mode) -> ansible-playbook linux_config.yml --check --diff -i inventory.ini
 
-# 9. Terraform 배포 방법:
+# 10. Terraform 배포 방법:
 
 - (Ansible로 1개씩 테스트 후 진행)
 
@@ -100,7 +107,7 @@ drives:
 - terraform apply -auto-approve                                                         -> (실행 계획 먼저 보여주고 적용 여부 묻는 입력 모드 활성화)
 - terraform apply -replace='null_resource.hardware_provisioning["idc-node-01"]'         -> (["idc-node-03"]' (OS 설정 실패 시 한 줄로 딱 그 서버만 다시 세팅할 수 있음.))
 
-# 10. Disk 주의사항
+# 11. Disk 주의사항
 
 - 이종 미디어 혼합 금지 (SSD + HDD): 하나의 RAID 볼륨(예: OS_RAID1) 안에 SSD와 HDD를 섞어서 묶을 수 없습니다. (RAID 컨트롤러가 거부합니다.)
 
