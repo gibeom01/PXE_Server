@@ -1,0 +1,25 @@
+terraform 배포 해결책
+
+✔ 해결책 1: Terraform을 이 프로세스에서 '제외'하세요이유: OS가 없는 맨바닥(Bare-metal) 상태의 하드웨어와 부팅 프로세스를 관리하기에 Terraform은 적합하지 않습니다.대안: 하드웨어 제어부터 가상 미디어 부팅까지 전체 흐름을 상태 추적이 유연한 Ansible 단독으로 처리하거나, Ansible 플레이북 내부에서 루프 연산을 가동해야 합니다.✔ 해결책 2: Ansible 코드에 'Job Status' 검증 루프 추가 (가장 중요)RAID 세팅이나 펌웨어 명령을 내린 후, iDRAC의 Job Queue가 완전히 Completed 상태가 될 때까지 무한정 기다리는 태스크를 반드시 넣어야 합니다.yaml# 예시: Dell OpenManage 모듈 사용 시 job_wait 필수 적용
+- name: Configure RAID 1 on Dell R630
+  dellemc.openmanage.idrac_storage_volume:
+    idrac_ip: "{{ idrac_ip }}"
+    idrac_user: "{{ idrac_user }}"
+    idrac_password: "{{ idrac_password }}"
+    share_mnt: "/var/lib/tftpboot"
+    state: "present"
+    volumes:
+      - RAIDType: "RAID1"
+        VolumeName: "OS_Drive"
+  register: raid_result
+
+# [필수] RAID 작업이 완전히 끝날 때까지 30초마다 체크하며 최대 10분간 대기
+- name: Wait for iDRAC Job to Complete
+  dellemc.openmanage.idrac_job_queue:
+    idrac_ip: "{{ idrac_ip }}"
+    idrac_user: "{{ idrac_user }}"
+    idrac_password: "{{ idrac_password }}"
+    job_id: "{{ raid_result.job_id }}"
+    wait: yes
+    wait_timeout: 600  # 10분 대기
+코드를 사용할 때는 주의가 필요합니다.✔ 해결책 3: 다음 작업 전 iDRAC Job Queue 강제 초기화성공/실패가 반복된다는 것은 이전 실패의 찌꺼기(작업)가 iDRAC 메모리에 남아있기 때문입니다. 플레이북이 시작될 때 iDRAC의 작업 대기열을 완전히 밀어버리는 코드를 맨 위에 배치하세요.Ansible 모듈이나 racadm jobqueue delete -i JID_CLEARALL 명령어를 통해 큐를 비워야 다음 마운트 명령이 무조건 성공합니다.✔ 해결책 4: 가상 미디어 배포 대신 가벼운 가상 플로피(vFloppy) 활용ks.cfg나 unattend.xml 같은 설정 파일만 넘길 때, 거대한 OS ISO 전체를 가상 미디어로 물리면 네트워크 지연으로 실패 확률이 높습니다.해결: OS 원본 이미지는 앞서 설명한 사내 내부 PXE 서버에 항상 띄워두고, iDRAC으로는 "너 부팅하면 저 PXE 서버로 가서 설치해"라는 아주 가벼운 텍스트 명령(Kickstart 파일 위치 지정)만 가상 플로피 디스크 파일(IMG) 형태로 iDRAC에 마운트해 던지는 방식을 쓰면 레이스 컨디션이 사라집니다.
