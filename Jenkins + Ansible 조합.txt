@@ -1,0 +1,23 @@
+Jenkins + Ansible 조합
+
+1. 왜 역할을 나누어야 할까요? (Jenkins + Ansible 조합)두 도구의 역할을 철저히 분리하면 성공률이 극대화됩니다.Jenkins의 역할 (관리 및 시각화):웹 UI 제공: 검은색 터미널 창 대신 웹 화면에서 "배포 시작" 버튼을 누를 수 있게 해줍니다.파라미터 입력: 배포할 때마다 고객사의 물리 서버 IP, 설정할 RAID 레벨(RAID 1, 5, 10), 설치할 OS 종류(Windows, Rocky 등)를 마우스 클릭과 텍스트 입력으로 쉽게 받아 Ansible로 넘겨줍니다.로그 기록: 배포가 실패했을 때 어느 단계에서 실패했는지 웹 화면에 깔끔하게 로그를 보관합니다.Ansible의 역할 (실제 하드웨어 제어):Jenkins가 넘겨준 파라미터(예: Dell R630, RAID 5, Rocky Linux)를 받아 실제로 iDRAC API를 호출합니다.앞서 말씀드린 "iDRAC 작업(Job)이 완료될 때까지 대기(Wait)"하는 끈질긴 루프 연산을 전담합니다.
+
+---
+
+2. 추천하는 전체 파이프라인 흐름 (성공률 100% 아키텍처)노트북을 들고 다니며 전면 iDRAC 포트에 직결하는 현재 환경에서 Jenkins와 Ansible을 엮는 가장 확실한 구성 방식
+[작업자 노트북 (Jenkins + Ansible 설치)]
+      │
+      ├─ 1. Jenkins 웹화면에서 서버 정보 및 OS 선택 후 '빌드' 클릭
+      ├─ 2. Jenkins가 내부의 Ansible Playbook을 트리거 (변수 전달)
+      │
+      ▼ (랜선 연결: 전면 iDRAC 포트)
+[대상 Dell R630 물리 서버]
+      │
+      ├─ 3. Ansible이 iDRAC Queue 초기화 및 RAID 설정
+      ├─ 4. Ansible이 iDRAC 상태를 30초마다 체크하며 "완료"될 때까지 대기 (Jenkins는 대기 상태 유지)
+      ├─ 5. Ansible이 가상 미디어(ISO, Kickstart 파일)를 iDRAC에 마운트
+      └─ 6. 서버 재부팅 및 무인 OS 설치 시작 ➔ 완수 후 Jenkins에 "성공" 리턴
+
+---
+
+3. 이렇게 구성할 때의 핵심 이점Ansible 단독 사용 시의 불편함 해소: Ansible만 쓰면 매번 터미널 창에서 복잡한 YAML 변수(ansible-playbook -i hosts site.yml -e "target_os=rocky raid=5")를 일일이 타이핑해야 해서 오타로 인한 실패가 잦아집니다. Jenkins가 이를 휴먼 에러 없는 UI로 막아줍니다.타임아웃 제어 가능: Jenkins 파이프라인 코드(Jenkinsfile)에서 특정 단계의 타임아웃을 30분~1시간 단위로 여유 있게 지정할 수 있습니다. 하드웨어가 켜지고 굽는 물리적인 시간을 Jenkins가 득달같이 재촉하지 않고 차분히 기다려줍니다.고객사별 템플릿 관리: Jenkins에 고객사별 빌드 잡(Job)을 만들어 두면, A사용 배포, B사용 배포를 버튼 하나로 분리하여 관리할 수 있습니다.
